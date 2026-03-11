@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pratt Institute Computer Labs</title>
+    <style>
+        :root {
+            --pratt-gold: #FFC72C;
+            --pratt-black: #000000;
+            --gray-light: #f4f4f4;
+            --gray-dark: #333333;
+        }
+        body {
+            font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            background-color: var(--gray-light);
+            color: var(--pratt-black);
+            margin: 0;
+            padding: 40px 20px;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .lab-card {
+            background-color: #fff;
+            border-top: 5px solid var(--pratt-gold);
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease;
+            min-height: 320px;
+        }
+        .lab-card:hover {
+            transform: translateY(-5px);
+        }
+        .lab-info {
+            transition: opacity 0.3s ease;
+        }
+        .lab-card:hover .lab-info {
+            opacity: 0.1;
+        }
+        .lab-hover-details {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+        }
+        .lab-card:hover .lab-hover-details {
+            opacity: 1;
+        }
+        .status {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-bottom: 10px;
+        }
+        .status.open { color: #2e7d32; }
+        .status.closed { color: #c62828; }
+        .open-indicator {
+            font-weight: bold;
+            font-size: 1.4em;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 15px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            text-align: center;
+        }
+        .open-indicator.open {
+            color: #1b5e20;
+            background-color: #c8e6c9;
+        }
+        .open-indicator.closed {
+            color: #b71c1c;
+            background-color: #ffcdd2;
+        }
+        
+        /* Modal Styles */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.6);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+        .close-btn {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--gray-dark);
+            border: none;
+            background: none;
+        }
+        .tag {
+            background: #eee;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.85em;
+            display: inline-block;
+            margin: 4px 4px 0 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Pratt Institute Computer and Print Labs</h1>
+    <div class="grid-container" id="labGrid">
+        </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal()">&times;</button>
+            <h2 id="modalTitle">Lab Name</h2>
+            <div id="modalBody">
+                </div>
+        </div>
+    </div>
+
+<script>
+    // This JSON structure mimics data you would fetch from a database or CSV.
+    // It makes it incredibly easy to update schedules and equipment globally.
+    const labData = [
+        {
+            id: 'higgins',
+            name: 'Higgins Hall Labs',
+            location: 'Brooklyn Campus - Higgins Hall',
+            phone: '(718) 636-3600',
+            basicInfo: 'Architecture and design computing lab.',
+            schedule: { Mon: '9:00 AM - 9:00 PM', Tue: '9:00 AM - 9:00 PM', Wed: '9:00 AM - 9:00 PM', Thu: '9:00 AM - 9:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: 'Closed', Sun: '12:00 PM - 8:00 PM' },
+            resources: { workstations: ['Mac Studio M2', 'Dell Precision Windows Workstations'], equipment: ['Flatbed Scanners', 'Wacom Cintiqs'] }
+        },
+        {
+            id: 'engineering',
+            name: 'Engineering Computer Lab',
+            location: 'Brooklyn Campus - Engineering Bldg',
+            phone: '(718) 636-3601',
+            basicInfo: 'Specialized computing for engineering and technical software.',
+            schedule: { Mon: '9:00 AM - 9:00 PM', Tue: '9:00 AM - 9:00 PM', Wed: '9:00 AM - 9:00 PM', Thu: '9:00 AM - 9:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: 'Closed', Sun: '12:00 PM - 8:00 PM' },
+            resources: { workstations: ['High-performance Windows PCs'], equipment: ['Laser Cutters (requires booking)', '3D Printers'] }
+        },
+        {
+            id: 'foundation',
+            name: 'Foundation Computer Lab',
+            location: 'Brooklyn Campus',
+            phone: '(718) 636-3602',
+            basicInfo: 'Primary lab for Foundation students (drop-in after 5PM).',
+            schedule: { Mon: '8:30 AM - 8:30 PM', Tue: '8:30 AM - 8:30 PM', Wed: '8:30 AM - 8:30 PM', Thu: '8:30 AM - 8:30 PM', Fri: '8:30 AM - 8:30 PM', Sat: 'Closed', Sun: 'Closed' },
+            resources: { workstations: ['24" iMacs'], equipment: ['Epson Scanners'] }
+        },
+        {
+            id: 'w14',
+            name: 'w14 Labs (PMC)',
+            location: 'Manhattan Campus - 144 W 14th St',
+            phone: '(212) 647-7400',
+            basicInfo: 'Serving printing and finishing needs for Manhattan students.',
+            schedule: { Mon: '9:00 AM - 10:00 PM', Tue: '9:00 AM - 10:00 PM', Wed: '9:00 AM - 10:00 PM', Thu: '9:00 AM - 10:00 PM', Fri: '9:00 AM - 10:00 PM', Sat: '9:00 AM - 5:00 PM', Sun: '9:00 AM - 5:00 PM' },
+            resources: { workstations: ['Mac and Windows mix'], equipment: ['Large format plotters', 'Laser printers'] }
+        },
+        {
+            id: '2dpc',
+            name: '2D Print Center (2DPC)',
+            location: 'ARC Bldg A-03 (BK) / Rm 502 (Manhattan)',
+            phone: '(718) 636-3603',
+            basicInfo: 'Professional-grade student print services.',
+            schedule: { Mon: '9:00 AM - 9:00 PM', Tue: '9:00 AM - 9:00 PM', Wed: '9:00 AM - 9:00 PM', Thu: '9:00 AM - 9:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: 'Closed', Sun: 'Closed' },
+            resources: { workstations: ['Print staging Mac Stations'], equipment: ['Epson SureColor P-Series', 'Risograph'] },
+            services: ['Large Format Inkjet Printing', 'Risograph Printing', 'Vinyl Cutting'],
+            media: ['Enhanced Matte', 'Premium Luster', 'Cotton Rag', 'Clear Film']
+        },
+        {
+            id: 'copycenter',
+            name: 'Pratt Copy Center',
+            location: 'Brooklyn Campus - Machinery Bldg Rm 107',
+            phone: '(718) 636-3604',
+            basicInfo: 'Administrative and academic copying and binding.',
+            schedule: { Mon: '9:00 AM - 5:00 PM', Tue: '9:00 AM - 5:00 PM', Wed: '9:00 AM - 5:00 PM', Thu: '9:00 AM - 5:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: 'Closed', Sun: 'Closed' },
+            resources: { workstations: ['Staff operated'], equipment: ['High-volume Xerox Copiers', 'Coil Binders', 'Guillotine Cutters'] },
+            services: ['Bulk Copying', 'Wire & Coil Binding', 'Saddle Stitching', 'Laminating'],
+            media: ['Standard 20lb Bond', 'Cardstock', 'Glossy Text', 'Colored Paper']
+        },
+        {
+            id: 'machinery',
+            name: 'Machinery Lab (MCC)',
+            location: 'Brooklyn Campus - Machinery Bldg',
+            phone: '(718) 636-3605',
+            basicInfo: 'Woodworking, metalworking, and fabrication equipment for student projects.',
+            schedule: { Mon: '9:00 AM - 9:00 PM', Tue: '9:00 AM - 9:00 PM', Wed: '9:00 AM - 9:00 PM', Thu: '9:00 AM - 9:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: 'Closed', Sun: 'Closed' },
+            resources: { workstations: ['Design stations'], equipment: ['Table Saws', 'Band Saws', 'CNC Router', 'Metal Lathe', 'Welding Stations'] },
+            services: ['Equipment Training Required', 'Material Sales', 'Project Consultation']
+        },
+        {
+            id: 'steuben',
+            name: 'Reprographic Lab (Steuben)',
+            location: 'Brooklyn Campus - Steuben Hall',
+            phone: '(718) 636-3606',
+            basicInfo: 'Digital and analog reproduction services for large-format and specialized printing.',
+            schedule: { Mon: '9:00 AM - 9:00 PM', Tue: '9:00 AM - 9:00 PM', Wed: '9:00 AM - 9:00 PM', Thu: '9:00 AM - 9:00 PM', Fri: '9:00 AM - 5:00 PM', Sat: '10:00 AM - 4:00 PM', Sun: 'Closed' },
+            resources: { workstations: ['Mac workstations', 'Print staging stations'], equipment: ['Large Format Plotters', 'Flatbed Scanners', 'Drum Scanners'] },
+            services: ['Large Format Printing', 'Scanning Services', 'Digital Output'],
+            media: ['Bond Paper', 'Vellum', 'Mylar', 'Photo Gloss']
+        }
+    ];
+
+    const daysMap = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    // Helper function to check if a lab is open right now
+    function checkStatus(scheduleStr) {
+        if (scheduleStr === 'Closed') return { status: 'Closed', class: 'closed' };
+        
+        const now = new Date();
+        const currentHours = now.getHours();
+        const currentMinutes = now.getMinutes();
+        const currentTime = currentHours + (currentMinutes / 60);
+
+        try {
+            const [startStr, endStr] = scheduleStr.split(' - ');
+            const parseTime = (timeStr) => {
+                const [time, modifier] = timeStr.split(' ');
+                let [hours, minutes] = time.split(':').map(Number);
+                if (modifier === 'PM' && hours !== 12) hours += 12;
+                if (modifier === 'AM' && hours === 12) hours = 0;
+                return hours + (minutes / 60);
+            };
+
+            const startTime = parseTime(startStr);
+            const endTime = parseTime(endStr);
+
+            if (currentTime >= startTime && currentTime < endTime) {
+                return { status: 'Currently Open', class: 'open' };
+            } else {
+                return { status: 'Currently Closed', class: 'closed' };
+            }
+        } catch (e) {
+            return { status: 'Hours Unknown', class: 'closed' };
+        }
+    }
+
+    function renderLabs() {
+        const grid = document.getElementById('labGrid');
+        const todayStr = daysMap[new Date().getDay()];
+
+        labData.forEach(lab => {
+            const todaysHours = lab.schedule[todayStr] || 'Closed';
+            const statusInfo = checkStatus(todaysHours);
+
+            const card = document.createElement('div');
+            card.className = 'lab-card';
+            card.onclick = () => openModal(lab);
+
+            // Create Days/Hours list for the hover effect
+            let hoursHtml = '<ul style="padding-left: 20px; font-size: 0.9em;">';
+            for (const [day, hours] of Object.entries(lab.schedule)) {
+                let fw = day === todayStr ? 'bold' : 'normal';
+                hoursHtml += `<li style="font-weight: ${fw}">${day}: ${hours}</li>`;
+            }
+            hoursHtml += '</ul>';
+
+            const isOpen = statusInfo.class === 'open';
+            const openIndicatorHtml = `<div class="open-indicator ${statusInfo.class}">${isOpen ? 'This Lab is OPEN' : 'This Lab is CLOSED'}</div>`;
+
+            card.innerHTML = `
+                <div class="lab-info">
+                    <h3>${lab.name}</h3>
+                    <p><strong>Location:</strong> ${lab.location}</p>
+                    <p>${lab.basicInfo}</p>
+                </div>
+                <div class="lab-hover-details">
+                    ${openIndicatorHtml}
+                    <div class="status ${statusInfo.class}">${statusInfo.status}</div>
+                    <strong>Today's Hours:</strong> ${todaysHours}
+                    <hr style="margin: 10px 0; border: 0; border-top: 1px solid #ccc;">
+                    <strong>Weekly Schedule:</strong>
+                    ${hoursHtml}
+                    <p style="font-size: 0.8em; text-align: center; margin-top: 10px; color: #666;">
+                        Click for full resources
+                    </p>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    function openModal(lab) {
+        document.getElementById('modalTitle').innerText = lab.name;
+        let bodyHtml = `<p><strong>Location:</strong> ${lab.location}</p>`;
+        bodyHtml += `<p><strong>Phone:</strong> ${lab.phone || 'N/A'}</p>`;
+        
+        bodyHtml += `<h4>Workstations</h4><div>`;
+        lab.resources.workstations.forEach(item => bodyHtml += `<span class="tag">${item}</span>`);
+        bodyHtml += `</div><h4>Equipment</h4><div>`;
+        lab.resources.equipment.forEach(item => bodyHtml += `<span class="tag">${item}</span>`);
+        bodyHtml += `</div>`;
+
+        // Check for specific Print Lab / Copy Center fields
+        if (lab.services) {
+            bodyHtml += `<h4>Available Services</h4><ul>`;
+            lab.services.forEach(item => bodyHtml += `<li>${item}</li>`);
+            bodyHtml += `</ul>`;
+        }
+        if (lab.media) {
+            bodyHtml += `<h4>Available Media</h4><ul>`;
+            lab.media.forEach(item => bodyHtml += `<li>${item}</li>`);
+            bodyHtml += `</ul>`;
+        }
+
+        document.getElementById('modalBody').innerHTML = bodyHtml;
+        document.getElementById('modalOverlay').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('modalOverlay').style.display = 'none';
+    }
+
+    // Close modal if clicking outside the box
+    window.onclick = function(event) {
+        const modal = document.getElementById('modalOverlay');
+        if (event.target === modal) {
+            closeModal();
+        }
+    }
+
+    // Initialize UI
+    renderLabs();
+</script>
+</body>
+</html>
